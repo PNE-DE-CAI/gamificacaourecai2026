@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Plataforma de Progresso · Gamificação</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(145deg, #0a2f6c 0%, #041a3a 100%); min-height: 100vh; padding: 20px; color: #212121; }
+        :root { --azul-escuro: #0a2f6c; --azul-claro: #eef3fb; --vermelho: #d32f2f; --branco: #ffffff; --preto: #212121; --cinza-borda: #e0e4e9; }
+        .dashboard-container { max-width: 1400px; margin: 0 auto; background: #0f1a24; border-radius: 48px; padding: 20px; box-shadow: 0 30px 35px rgba(0,0,0,0.5), inset 0 1px 4px rgba(255,255,200,0.1); border: 1px solid var(--vermelho); }
+        .header { display: flex; justify-content: space-between; align-items: center; background: #0a2f6ccc; backdrop-filter: blur(4px); padding: 12px 24px; border-radius: 60px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .logo-area img { max-height: 50px; width: auto; background: white; border-radius: 12px; padding: 4px; }
+        .logo-area span { font-size: 1.2rem; font-weight: 600; color: #ffec9e; }
+        .user-info { background: #0a2f6c99; padding: 6px 18px; border-radius: 40px; color: white; display: flex; align-items: center; gap: 12px; }
+        .btn-logout { background: var(--vermelho); border: none; padding: 5px 12px; border-radius: 40px; color: white; cursor: pointer; font-weight: 600; }
+        .card { background: var(--branco); border-radius: 32px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 20px rgba(0,0,0,0.2); border: 1px solid var(--cinza-borda); }
+        .card h2 { color: var(--azul-escuro); border-left: 4px solid var(--vermelho); padding-left: 1rem; margin-bottom: 1.2rem; font-size: 1.5rem; }
+        .grid-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        input, select { width: 100%; padding: 10px; border-radius: 40px; border: 1px solid var(--cinza-borda); font-family: 'Inter', sans-serif; margin: 5px 0; }
+        button { background: linear-gradient(135deg, #0a2f6c, #052050); border: none; padding: 10px 20px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; transition: 0.1s linear; margin: 5px 0; }
+        button:active { transform: translateY(2px); }
+        .btn-danger { background: linear-gradient(135deg, #b71c1c, #8b0000); }
+        .btn-success { background: linear-gradient(135deg, #1e7e34, #145c24); }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; overflow-x: auto; display: block; }
+        th, td { border: 1px solid var(--cinza-borda); padding: 8px; text-align: left; }
+        th { background: var(--azul-escuro); color: white; }
+        .progress-bar { background: #e0e0e0; border-radius: 30px; height: 20px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { background: var(--vermelho); width: 0%; height: 100%; border-radius: 30px; }
+        .badge { background: var(--azul-escuro); color: white; padding: 4px 12px; border-radius: 40px; font-size: 0.8rem; display: inline-block; }
+        @media (max-width: 700px) { .dashboard-container { padding: 12px; } .grid-forms { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="dashboard-container" id="app">
+    <div class="header">
+        <div class="logo-area">
+            <img src="https://i.ibb.co/0p01LzxB/logo3de.jpg" alt="Logo">
+            <span>Plataforma de Progresso</span>
+        </div>
+        <div class="user-info" id="userInfo">
+            <span id="userNameDisplay"></span>
+            <button id="logoutBtn" class="btn-logout">Sair</button>
+        </div>
+    </div>
+
+    <div id="loginPanel">
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <h2>🎮 Acesso ao Sistema</h2>
+            <div style="margin-bottom: 20px;">
+                <button id="showProfessorLoginBtn" class="btn-success">Sou Professor</button>
+                <button id="showStudentLoginBtn">Sou Aluno (ID)</button>
+            </div>
+            <div id="professorLoginForm" style="display: none;">
+                <input type="email" id="profEmail" placeholder="E-mail institucional">
+                <input type="password" id="profPassword" placeholder="Senha">
+                <button id="profLoginBtn">Entrar</button>
+                <button id="profSignupBtn">Cadastrar Professor</button>
+                <p style="font-size:0.7rem; margin-top:8px;">⚠️ Após cadastro, o e‑mail não precisa ser confirmado (configuramos assim). Faça login em seguida.</p>
+            </div>
+            <div id="studentLoginForm" style="display: none;">
+                <input type="text" id="studentMatricula" placeholder="Digite seu número de matrícula (ID)">
+                <button id="studentLoginBtn">Ver Meus Dados</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="professorPanel" style="display: none;">
+        <div class="card">
+            <h2><i class="fas fa-chalkboard-user"></i> Gestão de Estudantes</h2>
+            <div class="grid-forms">
+                <div>
+                    <h3>➕ Adicionar Estudante</h3>
+                    <input type="text" id="nome" placeholder="Nome completo">
+                    <input type="text" id="escola" placeholder="Escola">
+                    <input type="text" id="turma" placeholder="Turma (ex: 9A)">
+                    <input type="text" id="serie" placeholder="Série (ex: 9º ano)">
+                    <select id="status">
+                        <option value="Abaixo do básico">Abaixo do básico</option>
+                        <option value="Básico">Básico</option>
+                        <option value="Proficiente">Proficiente</option>
+                    </select>
+                    <input type="number" id="missao" placeholder="Missão (1-16)" min="1" max="16" value="1">
+                    <input type="number" id="etapa" placeholder="Etapa (1-4)" min="1" max="4" value="1">
+                    <button id="addStudentBtn">➕ Salvar</button>
+                </div>
+                <div>
+                    <h3>📂 Importar CSV</h3>
+                    <p>Colunas: nome, escola, turma, serie, status, missao, etapa</p>
+                    <input type="file" id="csvFile" accept=".csv">
+                    <button id="importCsvBtn">📤 Importar</button>
+                </div>
+                <div>
+                    <h3>🔍 Filtros</h3>
+                    <input type="text" id="filterEscola" placeholder="Filtrar por Escola">
+                    <input type="text" id="filterTurma" placeholder="Filtrar por Turma">
+                    <button id="applyFiltersBtn">Aplicar</button>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table id="studentsTable">
+                    <thead><tr><th>ID</th><th>Nome</th><th>Escola</th><th>Turma</th><th>Série</th><th>Status</th><th>Missão</th><th>Etapa</th><th>Pontos</th><th>Código</th><th>Ações</th></tr></thead>
+                    <tbody id="studentsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="studentPanel" style="display: none;">
+        <div class="card">
+            <h2><i class="fas fa-user-graduate"></i> Meu Progresso</h2>
+            <div id="studentData"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== CONFIGURAÇÃO (SUBSTITUA AQUI!) ====================
+    const SUPABASE_URL = 'https://bkydyeighbcaabledgxj.supabase.co';      // ← sua URL
+    const SUPABASE_ANON_KEY = 'sb_publishable_aO9_8D0TQTyXBjteTXORQQ_hDZQa91z';                // ← sua chave anon
+    // ======================================================================
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null; // { role: 'professor' or 'student', id, ... }
+    let currentStudentId = null;
+    let studentsList = [];
+
+    // DOM elements
+    const loginPanel = document.getElementById('loginPanel');
+    const professorPanel = document.getElementById('professorPanel');
+    const studentPanel = document.getElementById('studentPanel');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+
+    // Funções de gamificação
+    function calcularPontos(missao, etapa, status) {
+        let pontos = (missao * 100) + (etapa * 25);
+        if (status === 'Abaixo do básico') pontos += 50;
+        if (status === 'Proficiente') pontos += 150;
+        return pontos;
+    }
+    function gerarCodigo(missao, etapa, status) {
+        let inicial = status === 'Abaixo do básico' ? 'A' : (status === 'Básico' ? 'B' : 'P');
+        return `M${missao}-E${etapa}-${inicial}`;
+    }
+
+    // CRUD professor
+    async function carregarEstudantes(filters = {}) {
+        if (!currentUser || currentUser.role !== 'professor') return;
+        let query = supabase.from('estudantes').select('*');
+        if (filters.escola) query = query.ilike('escola', `%${filters.escola}%`);
+        if (filters.turma) query = query.ilike('turma', `%${filters.turma}%`);
+        const { data, error } = await query.order('id', { ascending: false });
+        if (error) { console.error(error); alert('Erro ao carregar: ' + error.message); return; }
+        studentsList = data || [];
+        renderStudentsTable();
+    }
+
+    function renderStudentsTable() {
+        const tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = '';
+        studentsList.forEach(est => {
+            const pontos = calcularPontos(est.missao, est.etapa, est.status);
+            const codigo = gerarCodigo(est.missao, est.etapa, est.status);
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = est.id;
+            row.insertCell(1).innerText = est.nome;
+            row.insertCell(2).innerText = est.escola;
+            row.insertCell(3).innerText = est.turma;
+            row.insertCell(4).innerText = est.serie;
+            row.insertCell(5).innerText = est.status;
+            row.insertCell(6).innerText = est.missao;
+            row.insertCell(7).innerText = est.etapa;
+            row.insertCell(8).innerText = pontos;
+            row.insertCell(9).innerText = codigo;
+            const actions = row.insertCell(10);
+            const editBtn = document.createElement('button');
+            editBtn.innerText = '✏️';
+            editBtn.style.marginRight = '5px';
+            editBtn.onclick = () => editarEstudante(est);
+            const delBtn = document.createElement('button');
+            delBtn.innerText = '🗑️';
+            delBtn.className = 'btn-danger';
+            delBtn.onclick = () => deletarEstudante(est.id);
+            actions.appendChild(editBtn);
+            actions.appendChild(delBtn);
+        });
+    }
+
+    async function adicionarOuAtualizarEstudante(estudante, isUpdate = false) {
+        const pontos = calcularPontos(estudante.missao, estudante.etapa, estudante.status);
+        const codigo = gerarCodigo(estudante.missao, estudante.etapa, estudante.status);
+        if (!isUpdate) {
+            const { error } = await supabase.from('estudantes').insert([{ ...estudante, pontuacao_total: pontos, codigo_conquista: codigo }]);
+            if (error) { alert('Erro ao adicionar: ' + error.message); return; }
+        } else {
+            const { error } = await supabase.from('estudantes').update({ ...estudante, pontuacao_total: pontos, codigo_conquista: codigo }).eq('id', estudante.id);
+            if (error) { alert('Erro ao atualizar: ' + error.message); return; }
+        }
+        carregarEstudantes();
+    }
+
+    async function deletarEstudante(id) {
+        if (confirm('Remover estudante?')) {
+            const { error } = await supabase.from('estudantes').delete().eq('id', id);
+            if (error) alert(error.message);
+            else carregarEstudantes();
+        }
+    }
+
+    function editarEstudante(est) {
+        document.getElementById('nome').value = est.nome;
+        document.getElementById('escola').value = est.escola;
+        document.getElementById('turma').value = est.turma;
+        document.getElementById('serie').value = est.serie;
+        document.getElementById('status').value = est.status;
+        document.getElementById('missao').value = est.missao;
+        document.getElementById('etapa').value = est.etapa;
+        const addBtn = document.getElementById('addStudentBtn');
+        addBtn.innerText = '✏️ Atualizar';
+        addBtn.onclick = async () => {
+            const updated = {
+                id: est.id,
+                nome: document.getElementById('nome').value,
+                escola: document.getElementById('escola').value,
+                turma: document.getElementById('turma').value,
+                serie: document.getElementById('serie').value,
+                status: document.getElementById('status').value,
+                missao: parseInt(document.getElementById('missao').value),
+                etapa: parseInt(document.getElementById('etapa').value)
+            };
+            await adicionarOuAtualizarEstudante(updated, true);
+            addBtn.innerText = '➕ Salvar';
+            addBtn.onclick = addNewStudent;
+            document.getElementById('nome').value = '';
+            document.getElementById('escola').value = '';
+            document.getElementById('turma').value = '';
+            document.getElementById('serie').value = '';
+            document.getElementById('status').value = 'Básico';
+            document.getElementById('missao').value = 1;
+            document.getElementById('etapa').value = 1;
+        };
+    }
+
+    async function addNewStudent() {
+        const nome = document.getElementById('nome').value;
+        const escola = document.getElementById('escola').value;
+        const turma = document.getElementById('turma').value;
+        const serie = document.getElementById('serie').value;
+        const status = document.getElementById('status').value;
+        const missao = parseInt(document.getElementById('missao').value);
+        const etapa = parseInt(document.getElementById('etapa').value);
+        if (!nome || !escola || !turma || !serie) { alert('Preencha todos os campos'); return; }
+        await adicionarOuAtualizarEstudante({ nome, escola, turma, serie, status, missao, etapa }, false);
+        document.getElementById('nome').value = '';
+        document.getElementById('escola').value = '';
+        document.getElementById('turma').value = '';
+        document.getElementById('serie').value = '';
+        document.getElementById('status').value = 'Básico';
+        document.getElementById('missao').value = 1;
+        document.getElementById('etapa').value = 1;
+    }
+
+    // CSV Import
+    function importCSV(file) {
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                for (let row of results.data) {
+                    if (!row.nome) continue;
+                    const missao = parseInt(row.missao) || 1;
+                    const etapa = parseInt(row.etapa) || 1;
+                    const pontos = calcularPontos(missao, etapa, row.status);
+                    const codigo = gerarCodigo(missao, etapa, row.status);
+                    await supabase.from('estudantes').insert([{
+                        nome: row.nome,
+                        escola: row.escola,
+                        turma: row.turma,
+                        serie: row.serie,
+                        status: row.status,
+                        missao: missao,
+                        etapa: etapa,
+                        pontuacao_total: pontos,
+                        codigo_conquista: codigo
+                    }]);
+                }
+                alert('Importação concluída!');
+                carregarEstudantes();
+            }
+        });
+    }
+
+    // Autenticação Professor
+    async function professorLogin(email, password) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { alert('Login falhou: ' + error.message); return false; }
+        currentUser = { role: 'professor', id: data.user.id, email: data.user.email };
+        userNameDisplay.innerText = `Professor: ${email}`;
+        return true;
+    }
+
+    async function professorSignup(email, password) {
+        // Desabilita confirmação de e-mail via API (precisa estar configurado no Supabase)
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+        if (error) { alert('Cadastro falhou: ' + error.message); return false; }
+        alert('Cadastro realizado! Agora faça login.');
+        return true;
+    }
+
+    // Student login by matrícula (ID)
+    async function studentLogin(matricula) {
+        const { data, error } = await supabase.from('estudantes').select('*').eq('id', parseInt(matricula));
+        if (error || !data || data.length === 0) { alert('Matrícula não encontrada'); return false; }
+        const estudante = data[0];
+        currentUser = { role: 'student', id: estudante.id, nome: estudante.nome };
+        userNameDisplay.innerText = `Aluno: ${estudante.nome}`;
+        currentStudentId = estudante.id;
+        await carregarDadosEstudante();
+        return true;
+    }
+
+    async function carregarDadosEstudante() {
+        const { data, error } = await supabase.from('estudantes').select('*').eq('id', currentStudentId);
+        if (error || !data || data.length === 0) return;
+        const est = data[0];
+        const pontos = calcularPontos(est.missao, est.etapa, est.status);
+        const codigo = gerarCodigo(est.missao, est.etapa, est.status);
+        const progressoMissao = (est.missao / 16) * 100;
+        const progressoEtapa = (est.etapa / 4) * 100;
+        document.getElementById('studentData').innerHTML = `
+            <div class="grid-forms">
+                <div class="card"><h3>🏆 Pontuação Total</h3><div style="font-size:3rem; font-weight:800; color:var(--vermelho);">${pontos}</div></div>
+                <div class="card"><h3>📌 Missão Atual</h3><p>Missão ${est.missao} / 16</p><div class="progress-bar"><div class="progress-fill" style="width: ${progressoMissao}%;"></div></div><p>Etapa ${est.etapa} / 4</p><div class="progress-bar"><div class="progress-fill" style="width: ${progressoEtapa}%;"></div></div></div>
+                <div class="card"><h3>🎖️ Código de Conquista</h3><p class="badge" style="font-size:1.2rem;">${codigo}</p><p>Status: <strong>${est.status}</strong></p></div>
+            </div>
+            <div class="card"><h3>📊 Detalhes</h3><p><strong>Escola:</strong> ${est.escola} | <strong>Turma:</strong> ${est.turma} | <strong>Série:</strong> ${est.serie}</p><p><strong>Nome:</strong> ${est.nome}</p></div>
+        `;
+    }
+
+    // Event listeners
+    document.getElementById('showProfessorLoginBtn').onclick = () => {
+        document.getElementById('professorLoginForm').style.display = 'block';
+        document.getElementById('studentLoginForm').style.display = 'none';
+    };
+    document.getElementById('showStudentLoginBtn').onclick = () => {
+        document.getElementById('professorLoginForm').style.display = 'none';
+        document.getElementById('studentLoginForm').style.display = 'block';
+    };
+    document.getElementById('profLoginBtn').onclick = async () => {
+        const email = document.getElementById('profEmail').value;
+        const pass = document.getElementById('profPassword').value;
+        if (await professorLogin(email, pass)) {
+            loginPanel.style.display = 'none';
+            professorPanel.style.display = 'block';
+            studentPanel.style.display = 'none';
+            carregarEstudantes();
+        }
+    };
+    document.getElementById('profSignupBtn').onclick = async () => {
+        const email = document.getElementById('profEmail').value;
+        const pass = document.getElementById('profPassword').value;
+        await professorSignup(email, pass);
+    };
+    document.getElementById('studentLoginBtn').onclick = async () => {
+        const mat = document.getElementById('studentMatricula').value;
+        if (await studentLogin(mat)) {
+            loginPanel.style.display = 'none';
+            professorPanel.style.display = 'none';
+            studentPanel.style.display = 'block';
+        }
+    };
+    document.getElementById('logoutBtn').onclick = () => {
+        currentUser = null;
+        loginPanel.style.display = 'block';
+        professorPanel.style.display = 'none';
+        studentPanel.style.display = 'none';
+        supabase.auth.signOut();
+    };
+    document.getElementById('addStudentBtn').onclick = addNewStudent;
+    document.getElementById('importCsvBtn').onclick = () => {
+        const file = document.getElementById('csvFile').files[0];
+        if (file) importCSV(file);
+        else alert('Selecione um arquivo CSV');
+    };
+    document.getElementById('applyFiltersBtn').onclick = () => {
+        const escola = document.getElementById('filterEscola').value;
+        const turma = document.getElementById('filterTurma').value;
+        carregarEstudantes({ escola, turma });
+    };
+
+    // Inicialização
+    loginPanel.style.display = 'block';
+    professorPanel.style.display = 'none';
+    studentPanel.style.display = 'none';
+</script>
+</body>
+</html>
