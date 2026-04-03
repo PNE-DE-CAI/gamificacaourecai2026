@@ -33,6 +33,8 @@
         .progress-bar { background: #e0e0e0; border-radius: 30px; height: 20px; overflow: hidden; margin: 10px 0; }
         .progress-fill { background: var(--vermelho); width: 0%; height: 100%; border-radius: 30px; }
         .badge { background: var(--azul-escuro); color: white; padding: 4px 12px; border-radius: 40px; font-size: 0.8rem; display: inline-block; }
+        .conquista-title { font-size: 1.3rem; font-weight: 700; color: var(--azul-escuro); margin-top: 0.5rem; }
+        .conquista-frase { font-style: italic; color: #2c3e50; background: #f0f4fa; padding: 0.5rem; border-radius: 20px; margin-top: 0.5rem; }
         @media (max-width: 700px) { .dashboard-container { padding: 12px; } .grid-forms { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -128,10 +130,10 @@
 
 <script>
     (function() {
-    // ==================== CONFIGURAÇÃO (SUBSTITUA AQUI!) ====================
-    const SUPABASE_URL = 'https://bkydyeighbcaabledgxj.supabase.co';      // ← sua URL
-    const SUPABASE_ANON_KEY = 'sb_publishable_aO9_8D0TQTyXBjteTXORQQ_hDZQa91z';                // ← sua chave anon
-    // ======================================================================
+        // ==================== CONFIGURAÇÃO (SUBSTITUA AQUI!) ====================
+        const SUPABASE_URL = 'https://bkydyeighbcaabledgxj.supabase.co';      // ← sua URL
+        const SUPABASE_ANON_KEY = 'sb_publishable_aO9_8D0TQTyXBjteTXORQQ_hDZQa91z';                // ← sua chave anon
+        // ======================================================================
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -195,6 +197,64 @@
             let inicial = status === 'Abaixo do básico' ? 'A' : (status === 'Básico' ? 'B' : 'P');
             return `M${missao}-E${etapa}-${inicial}`;
         }
+
+        // ==================== FUNÇÃO DE CONQUISTA PERSONALIZADA ====================
+        function getConquistaInfo(codigo) {
+            const match = codigo.match(/M(\d+)-E(\d+)-([ABP])/);
+            if (!match) return { palavra: "Conquista Especial", frase: "Parabéns pela sua jornada!" };
+            
+            const missao = parseInt(match[1]);
+            const etapa = parseInt(match[2]);
+            const status = match[3];
+            
+            const prefixos = [
+                "Explorador", "Desbravador", "Navegador", "Desafiador", "Conquistador",
+                "Guardião", "Mestre", "Sábio", "Virtuoso", "Campeão", "Herói", "Lenda",
+                "Arquiteto", "Estrategista", "Gênio", "Visionário"
+            ];
+            const temas = [
+                "Decimal", "Fracionário", "Numérico", "Geométrico", "Algébrico",
+                "Proporcional", "Percentual", "Métrico", "Sequencial", "Lógico",
+                "Estocástico", "Cartesiano", "Trigonométrico", "Exponencial", "Logarítmico", "Integral"
+            ];
+            const acoes = [
+                "resolveu problemas complexos", "aplicou conceitos avançados", "superou desafios",
+                "consolidou aprendizagens", "demonstrou excelência", "avançou com maestria",
+                "decifrou enigmas matemáticos", "utilizou estratégias brilhantes", "transformou teoria em prática"
+            ];
+            const resultados = [
+                "alcançando a proficiência", "acelerando seu ritmo", "abrindo novas missões",
+                "inspirando a turma", "acumulando sabedoria", "desbloqueando o próximo nível"
+            ];
+            
+            const idxPref = (missao - 1) % prefixos.length;
+            const idxTema = (etapa - 1 + missao) % temas.length;
+            const idxAcao = (missao + etapa) % acoes.length;
+            const idxResultado = (status === 'P' ? (missao * etapa) % resultados.length : (etapa) % resultados.length);
+            
+            let palavra = "";
+            let frase = "";
+            
+            switch(status) {
+                case 'A': // Abaixo do básico – superação
+                    palavra = `${prefixos[idxPref]} da Superação`;
+                    frase = `Na Missão ${missao}, Etapa ${etapa}, você ${acoes[idxAcao]} mesmo diante das dificuldades, ${resultados[idxResultado]}. Sua persistência é sua maior força!`;
+                    break;
+                case 'B': // Básico – consistência
+                    palavra = `${prefixos[idxPref]} ${temas[idxTema]}`;
+                    frase = `Na Missão ${missao}, Etapa ${etapa}, você ${acoes[idxAcao]} e consolidou os fundamentos, ${resultados[idxResultado]}. Continue evoluindo!`;
+                    break;
+                case 'P': // Proficiente – excelência
+                    palavra = `Mestre ${temas[idxTema]}`;
+                    frase = `Na Missão ${missao}, Etapa ${etapa}, você ${acoes[idxAcao]} com brilhantismo, ${resultados[idxResultado]}. Você é referência de proficiência!`;
+                    break;
+                default:
+                    palavra = "Conquista Especial";
+                    frase = "Parabéns pela sua dedicação!";
+            }
+            return { palavra, frase };
+        }
+        // ========================================================================
 
         async function carregarEstudantes(filters = {}) {
             if (!currentUser || currentUser.role !== 'professor') return;
@@ -315,13 +375,33 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
+                    let inserted = 0;
+                    let errors = [];
                     for (let row of results.data) {
                         if (!row.matricula) continue;
+                        // Validação básica
+                        if (!escolasList.includes(row.escola)) {
+                            errors.push(`Escola "${row.escola}" inválida`);
+                            continue;
+                        }
+                        if (!seriesList.includes(row.serie)) {
+                            errors.push(`Série "${row.serie}" inválida`);
+                            continue;
+                        }
+                        if (!turmasList.includes(row.turma)) {
+                            errors.push(`Turma "${row.turma}" inválida`);
+                            continue;
+                        }
+                        const validStatus = ['Abaixo do básico', 'Básico', 'Proficiente'];
+                        if (!validStatus.includes(row.status)) {
+                            errors.push(`Status "${row.status}" inválido`);
+                            continue;
+                        }
                         const missao = parseInt(row.missao) || 1;
                         const etapa = parseInt(row.etapa) || 1;
                         const pontos = calcularPontos(missao, etapa, row.status);
                         const codigo = gerarCodigo(missao, etapa, row.status);
-                        await supabase.from('estudantes').insert([{
+                        const { error } = await supabase.from('estudantes').insert([{
                             matricula: row.matricula,
                             nome: row.nome,
                             escola: row.escola,
@@ -333,8 +413,20 @@
                             pontuacao_total: pontos,
                             codigo_conquista: codigo
                         }]);
+                        if (error) {
+                            errors.push(`Erro ao inserir ${row.matricula}: ${error.message}`);
+                        } else {
+                            inserted++;
+                        }
                     }
-                    alert('Importação concluída!');
+                    let msg = `Importação concluída. ${inserted} alunos inseridos.`;
+                    if (errors.length > 0) {
+                        msg += `\nErros (${errors.length}):\n` + errors.slice(0, 5).join('\n');
+                        if (errors.length > 5) msg += `\n... e mais ${errors.length-5} erros.`;
+                        alert(msg);
+                    } else {
+                        alert(msg);
+                    }
                     carregarEstudantes();
                 }
             });
@@ -374,13 +466,18 @@
             const est = data[0];
             const pontos = calcularPontos(est.missao, est.etapa, est.status);
             const codigo = gerarCodigo(est.missao, est.etapa, est.status);
+            const conquista = getConquistaInfo(codigo);
             const progressoMissao = (est.missao / 16) * 100;
             const progressoEtapa = (est.etapa / 4) * 100;
             document.getElementById('studentData').innerHTML = `
                 <div class="grid-forms">
                     <div class="card"><h3>🏆 Pontuação Total</h3><div style="font-size:3rem; font-weight:800; color:var(--vermelho);">${pontos}</div></div>
                     <div class="card"><h3>📌 Missão Atual</h3><p>Missão ${est.missao} / 16</p><div class="progress-bar"><div class="progress-fill" style="width: ${progressoMissao}%;"></div></div><p>Etapa ${est.etapa} / 4</p><div class="progress-bar"><div class="progress-fill" style="width: ${progressoEtapa}%;"></div></div></div>
-                    <div class="card"><h3>🎖️ Código de Conquista</h3><p class="badge" style="font-size:1.2rem;">${codigo}</p><p>Status: <strong>${est.status}</strong></p></div>
+                    <div class="card"><h3>🎖️ Código de Conquista</h3><p class="badge" style="font-size:1.2rem;">${codigo}</p>
+                        <div class="conquista-title">🏅 ${conquista.palavra}</div>
+                        <div class="conquista-frase">“${conquista.frase}”</div>
+                        <p style="margin-top:0.5rem;">Status: <strong>${est.status}</strong></p>
+                    </div>
                 </div>
                 <div class="card"><h3>📊 Detalhes</h3><p><strong>Escola:</strong> ${est.escola} | <strong>Série:</strong> ${est.serie} | <strong>Turma:</strong> ${est.turma}</p><p><strong>Nome:</strong> ${est.nome}</p><p><strong>Matrícula:</strong> ${est.matricula}</p></div>
             `;
