@@ -77,9 +77,15 @@
                 <div>
                     <h3>➕ Adicionar Estudante</h3>
                     <input type="text" id="nome" placeholder="Nome completo">
-                    <input type="text" id="escola" placeholder="Escola">
-                    <input type="text" id="turma" placeholder="Turma (ex: 9A)">
-                    <input type="text" id="serie" placeholder="Série (ex: 9º ano)">
+                    <select id="escola">
+                        <option value="">Selecione a Escola</option>
+                    </select>
+                    <select id="serie">
+                        <option value="">Selecione a Série/Ano</option>
+                    </select>
+                    <select id="turma">
+                        <option value="">Selecione a Turma</option>
+                    </select>
                     <select id="status">
                         <option value="Abaixo do básico">Abaixo do básico</option>
                         <option value="Básico">Básico</option>
@@ -121,10 +127,11 @@
 
 <script>
     (function() {
-        // ========== CONFIGURAÇÃO (SUBSTITUA AQUI!) ==========
-        const SUPABASE_URL = 'https://bkydyeighbcaabledgxj.supabase.co';      // ← sua URL
-        const SUPABASE_ANON_KEY = 'sb_publishable_aO9_8D0TQTyXBjteTXORQQ_hDZQa91z';                // ← sua chave anon
-       // ======================================================================
+    // ==================== CONFIGURAÇÃO (SUBSTITUA AQUI!) ====================
+    const SUPABASE_URL = 'https://bkydyeighbcaabledgxj.supabase.co';      // ← sua URL
+    const SUPABASE_ANON_KEY = 'sb_publishable_aO9_8D0TQTyXBjteTXORQQ_hDZQa91z';                // ← sua chave anon
+    // ======================================================================
+
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
@@ -136,6 +143,63 @@
         const professorPanel = document.getElementById('professorPanel');
         const studentPanel = document.getElementById('studentPanel');
         const userNameDisplay = document.getElementById('userNameDisplay');
+
+        // Dados para listas suspensas (extraídos da tabela fornecida)
+        const escolasList = [
+            "E.E. ADAIL JARBAS DUCLOS", "E.E. AFONSO MORENO", "E.E. ALADINO POLON", "E.E. ALBERTO GRAF – CAPITÃO",
+            "E.E. ALBINO FIORE", "E.E. ALFRIED THEODOR WEISZFLOG", "E.E. ANA MARIA GARRIDO ORLANDIN – PROF.ª",
+            "E.E. APARECIDO ROBERTO TONELLOTTI – PROF.", "E.E. ARMANDO SESTINI", "E.E. ARTHUR WEINGRILL",
+            "E.E. AZEVEDO SOARES", "E.E. BAIRRO DO ITAIM", "E.E. BAIRRO JUNDIAIZINHO", "E.E. BELÉM DA SERRA",
+            "E.E. BENEDITO APARECIDO TAVARES – PROF.", "E.E. BENEDITO FAGUNDES MARQUES",
+            "E.E. BUENO DE AZEVEDO FILHO – PROF.", "E.E. CARLOS AUGUSTO DE PÁDUA FLEURY – PROF.",
+            "E.E. CELESTINA VALENTE LENGENFELDER – PROF.ª", "E.E. CHÁCARA CAMPONESA/ Jd Vassouras",
+            "E.E. DOMINGOS CAMBIAGHI – PROF.", "E.E. ÉLCIO JOSÉ PEREIRA COTRIM – PROF.",
+            "E.E. ELVIRA PARADA MANGA – PROF.ª", "E.E. FRANCISCO GONÇALVES VIEIRA – PROFº",
+            "E.E. HERMELINA DE ALBUQUERQUE PASSARELLA – PROF.ª", "E.E. IRACI SARTORI VIEIRA DA SILVA – PROF.ª",
+            "E.E. ISAÍAS LUIZ MATIAZZO", "E.E. ISAURA DE MIRANDA BOTTO – PROFª", "E.E. ISAURA VALENTINI HANSER – PROFª",
+            "E.E. IVONE DOS ANJOS DA SILVA CAMPOS – PROF.ª", "E.E. JARDIM ALEGRIA II", "E.E. JARDIM DAS ROSAS",
+            "E.E. JARDIM SÃO FRANCISCO", "E.E. JARDIM SILVIA II", "E.E. JOAQUIM MARQUES DA SILVA SOBRINHO – TTE.",
+            "E.E. JOCIMARA VIEIRA DA SILVA – PROF.ª", "E.E. JOSÉ CARLOS DA SILVA JUNIOR",
+            "E.E. JOSÉ DE BARROS MARTINS – EDITOR", "E.E. JOSÉ PARADA – PROF.", "E.E. JOSÉ ROBERTO MELCHIOR – DR.",
+            "E.E. KÁTIA MARIA TARIFA LEME TONELLI – PROF.ª", "E.E. LENITA CORRÊA CAMARGO – PROF.ª",
+            "E.E. LUIZ ALEXANDRE DOS SANTOS – VEREADOR", "E.E. LYDIA SCALET WALKER – PROF.ª",
+            "E.E. MARIA ZEZA GOMES DE OLIVEIRA", "E.E. MARIO TOLEDO DE MORAES – DR.", "E.E. NAIR HANNICKEL ROMARO",
+            "E.E. NELSON MANZANARES – DR.", "E.E. NIDE ZAIM CARDOSO – PROF.ª", "E.E. ODARICO OLIVEIRA NASCIMENTO – PROF.",
+            "E.E. OTTO WEISZFLOG", "E.E. OZILDE ALBUQUERQUE PASSARELLA – DR.", "E.E. PARQUE CENTO E VINTE II",
+            "E.E. PAULO DUARTE", "E.E. PEDRO GALRÃO DO NASCIMENTO", "E.E. PEDRO LELIS DE SOUZA – PREFEITO",
+            "E.E. PEDRO PAULO AGUIAR", "E.E. PIETRO PETRI", "E.E. RITUCO MITANI – PROF.ª",
+            "E.E. ROGÉRIO LEVORIN – PROF.", "E.E. SUZANA DIAS", "E.E. ULYSSES SANCHES RAMIRES – PROF.",
+            "E.E. VINCENZO LOBASSI", "E.E. WALTER RIBAS DE ANDRADE – PROF.", "E.E. WALTHER WEISZFLOG",
+            "E.E. ZILTON BICUDO – PROF.", "E.E. OLINDO DÁRTORA – DR."
+        ];
+
+        const seriesList = ["6º Ano", "7º Ano", "8º Ano", "9º Ano", "1ª Série EM", "2ª Série EM", "3ª Série EM"];
+        const turmasList = ["A", "B", "C", "D", "E", "G", "H", "I", "J", "L", "M", "N", "O", "P", "Q", "R", "S"];
+
+        // Preencher os selects
+        function populateSelects() {
+            const escolaSelect = document.getElementById('escola');
+            const serieSelect = document.getElementById('serie');
+            const turmaSelect = document.getElementById('turma');
+            escolasList.forEach(escola => {
+                const option = document.createElement('option');
+                option.value = escola;
+                option.textContent = escola;
+                escolaSelect.appendChild(option);
+            });
+            seriesList.forEach(serie => {
+                const option = document.createElement('option');
+                option.value = serie;
+                option.textContent = serie;
+                serieSelect.appendChild(option);
+            });
+            turmasList.forEach(turma => {
+                const option = document.createElement('option');
+                option.value = turma;
+                option.textContent = turma;
+                turmaSelect.appendChild(option);
+            });
+        }
 
         // Gamificação
         function calcularPontos(missao, etapa, status) {
@@ -216,8 +280,8 @@
         function editarEstudante(est) {
             document.getElementById('nome').value = est.nome;
             document.getElementById('escola').value = est.escola;
-            document.getElementById('turma').value = est.turma;
             document.getElementById('serie').value = est.serie;
+            document.getElementById('turma').value = est.turma;
             document.getElementById('status').value = est.status;
             document.getElementById('missao').value = est.missao;
             document.getElementById('etapa').value = est.etapa;
@@ -238,10 +302,10 @@
                 addBtn.innerText = '➕ Salvar';
                 addBtn.onclick = addNewStudent;
                 document.getElementById('nome').value = '';
-                document.getElementById('escola').value = '';
-                document.getElementById('turma').value = '';
-                document.getElementById('serie').value = '';
-                document.getElementById('status').value = 'Básico';
+                document.getElementById('escola').selectedIndex = 0;
+                document.getElementById('serie').selectedIndex = 0;
+                document.getElementById('turma').selectedIndex = 0;
+                document.getElementById('status').selectedIndex = 1;
                 document.getElementById('missao').value = 1;
                 document.getElementById('etapa').value = 1;
             };
@@ -250,23 +314,23 @@
         async function addNewStudent() {
             const nome = document.getElementById('nome').value;
             const escola = document.getElementById('escola').value;
-            const turma = document.getElementById('turma').value;
             const serie = document.getElementById('serie').value;
+            const turma = document.getElementById('turma').value;
             const status = document.getElementById('status').value;
             const missao = parseInt(document.getElementById('missao').value);
             const etapa = parseInt(document.getElementById('etapa').value);
-            if (!nome || !escola || !turma || !serie) { alert('Preencha todos os campos'); return; }
+            if (!nome || !escola || !serie || !turma) { alert('Preencha todos os campos'); return; }
             await adicionarOuAtualizarEstudante({ nome, escola, turma, serie, status, missao, etapa }, false);
             document.getElementById('nome').value = '';
-            document.getElementById('escola').value = '';
-            document.getElementById('turma').value = '';
-            document.getElementById('serie').value = '';
-            document.getElementById('status').value = 'Básico';
+            document.getElementById('escola').selectedIndex = 0;
+            document.getElementById('serie').selectedIndex = 0;
+            document.getElementById('turma').selectedIndex = 0;
+            document.getElementById('status').selectedIndex = 1;
             document.getElementById('missao').value = 1;
             document.getElementById('etapa').value = 1;
         }
 
-        // CSV Import
+        // CSV Import (mantém compatibilidade)
         function importCSV(file) {
             Papa.parse(file, {
                 header: true,
@@ -393,6 +457,8 @@
             carregarEstudantes({ escola, turma });
         };
 
+        // Inicialização
+        populateSelects();
         loginPanel.style.display = 'block';
         professorPanel.style.display = 'none';
         studentPanel.style.display = 'none';
