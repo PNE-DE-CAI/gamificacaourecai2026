@@ -54,7 +54,7 @@
             <h2>🎮 Acesso ao Sistema</h2>
             <div style="margin-bottom: 20px;">
                 <button id="showProfessorLoginBtn" class="btn-success">Sou Professor</button>
-                <button id="showStudentLoginBtn">Sou Aluno (ID)</button>
+                <button id="showStudentLoginBtn">Sou Aluno (Matrícula)</button>
             </div>
             <div id="professorLoginForm" style="display: none;">
                 <input type="email" id="profEmail" placeholder="E-mail institucional">
@@ -64,7 +64,7 @@
                 <p style="font-size:0.7rem; margin-top:8px;">⚠️ Após cadastro, faça login.</p>
             </div>
             <div id="studentLoginForm" style="display: none;">
-                <input type="text" id="studentMatricula" placeholder="Digite seu número de matrícula (ID)">
+                <input type="text" id="studentMatricula" placeholder="Digite sua matrícula (ex: 12345)">
                 <button id="studentLoginBtn">Ver Meus Dados</button>
             </div>
         </div>
@@ -76,6 +76,7 @@
             <div class="grid-forms">
                 <div>
                     <h3>➕ Adicionar Estudante</h3>
+                    <input type="text" id="matricula" placeholder="Matrícula (única, ex: RA)">
                     <input type="text" id="nome" placeholder="Nome completo">
                     <select id="escola">
                         <option value="">Selecione a Escola</option>
@@ -97,7 +98,7 @@
                 </div>
                 <div>
                     <h3>📂 Importar CSV</h3>
-                    <p>Colunas: nome, escola, turma, serie, status, missao, etapa</p>
+                    <p>Colunas: matricula, nome, escola, serie, turma, status, missao, etapa</p>
                     <input type="file" id="csvFile" accept=".csv">
                     <button id="importCsvBtn">📤 Importar</button>
                 </div>
@@ -110,7 +111,7 @@
             </div>
             <div style="overflow-x: auto;">
                 <table id="studentsTable">
-                    <thead><tr><th>ID</th><th>Nome</th><th>Escola</th><th>Turma</th><th>Série</th><th>Status</th><th>Missão</th><th>Etapa</th><th>Pontos</th><th>Código</th><th>Ações</th></tr></thead>
+                    <thead><tr><th>ID</th><th>Matrícula</th><th>Nome</th><th>Escola</th><th>Série</th><th>Turma</th><th>Status</th><th>Missão</th><th>Etapa</th><th>Pontos</th><th>Código</th><th>Ações</th></tr></thead>
                     <tbody id="studentsTableBody"></tbody>
                 </table>
             </div>
@@ -144,7 +145,7 @@
         const studentPanel = document.getElementById('studentPanel');
         const userNameDisplay = document.getElementById('userNameDisplay');
 
-        // Dados para listas suspensas (extraídos da tabela fornecida)
+        // Dados para listas suspensas
         const escolasList = [
             "E.E. ADAIL JARBAS DUCLOS", "E.E. AFONSO MORENO", "E.E. ALADINO POLON", "E.E. ALBERTO GRAF – CAPITÃO",
             "E.E. ALBINO FIORE", "E.E. ALFRIED THEODOR WEISZFLOG", "E.E. ANA MARIA GARRIDO ORLANDIN – PROF.ª",
@@ -172,36 +173,18 @@
             "E.E. VINCENZO LOBASSI", "E.E. WALTER RIBAS DE ANDRADE – PROF.", "E.E. WALTHER WEISZFLOG",
             "E.E. ZILTON BICUDO – PROF.", "E.E. OLINDO DÁRTORA – DR."
         ];
-
         const seriesList = ["6º Ano", "7º Ano", "8º Ano", "9º Ano", "1ª Série EM", "2ª Série EM", "3ª Série EM"];
         const turmasList = ["A", "B", "C", "D", "E", "G", "H", "I", "J", "L", "M", "N", "O", "P", "Q", "R", "S"];
 
-        // Preencher os selects
         function populateSelects() {
             const escolaSelect = document.getElementById('escola');
             const serieSelect = document.getElementById('serie');
             const turmaSelect = document.getElementById('turma');
-            escolasList.forEach(escola => {
-                const option = document.createElement('option');
-                option.value = escola;
-                option.textContent = escola;
-                escolaSelect.appendChild(option);
-            });
-            seriesList.forEach(serie => {
-                const option = document.createElement('option');
-                option.value = serie;
-                option.textContent = serie;
-                serieSelect.appendChild(option);
-            });
-            turmasList.forEach(turma => {
-                const option = document.createElement('option');
-                option.value = turma;
-                option.textContent = turma;
-                turmaSelect.appendChild(option);
-            });
+            escolasList.forEach(e => { let opt = document.createElement('option'); opt.value = e; opt.textContent = e; escolaSelect.appendChild(opt); });
+            seriesList.forEach(s => { let opt = document.createElement('option'); opt.value = s; opt.textContent = s; serieSelect.appendChild(opt); });
+            turmasList.forEach(t => { let opt = document.createElement('option'); opt.value = t; opt.textContent = t; turmaSelect.appendChild(opt); });
         }
 
-        // Gamificação
         function calcularPontos(missao, etapa, status) {
             let pontos = (missao * 100) + (etapa * 25);
             if (status === 'Abaixo do básico') pontos += 50;
@@ -213,14 +196,13 @@
             return `M${missao}-E${etapa}-${inicial}`;
         }
 
-        // Professor CRUD
         async function carregarEstudantes(filters = {}) {
             if (!currentUser || currentUser.role !== 'professor') return;
             let query = supabase.from('estudantes').select('*');
             if (filters.escola) query = query.ilike('escola', `%${filters.escola}%`);
             if (filters.turma) query = query.ilike('turma', `%${filters.turma}%`);
             const { data, error } = await query.order('id', { ascending: false });
-            if (error) { console.error(error); alert('Erro ao carregar: ' + error.message); return; }
+            if (error) { alert('Erro ao carregar: ' + error.message); return; }
             studentsList = data || [];
             renderStudentsTable();
         }
@@ -233,26 +215,22 @@
                 const codigo = gerarCodigo(est.missao, est.etapa, est.status);
                 const row = tbody.insertRow();
                 row.insertCell(0).innerText = est.id;
-                row.insertCell(1).innerText = est.nome;
-                row.insertCell(2).innerText = est.escola;
-                row.insertCell(3).innerText = est.turma;
+                row.insertCell(1).innerText = est.matricula;
+                row.insertCell(2).innerText = est.nome;
+                row.insertCell(3).innerText = est.escola;
                 row.insertCell(4).innerText = est.serie;
-                row.insertCell(5).innerText = est.status;
-                row.insertCell(6).innerText = est.missao;
-                row.insertCell(7).innerText = est.etapa;
-                row.insertCell(8).innerText = pontos;
-                row.insertCell(9).innerText = codigo;
-                const actions = row.insertCell(10);
-                const editBtn = document.createElement('button');
-                editBtn.innerText = '✏️';
-                editBtn.style.marginRight = '5px';
+                row.insertCell(5).innerText = est.turma;
+                row.insertCell(6).innerText = est.status;
+                row.insertCell(7).innerText = est.missao;
+                row.insertCell(8).innerText = est.etapa;
+                row.insertCell(9).innerText = pontos;
+                row.insertCell(10).innerText = codigo;
+                const actions = row.insertCell(11);
+                const editBtn = document.createElement('button'); editBtn.innerText = '✏️'; editBtn.style.marginRight = '5px';
                 editBtn.onclick = () => editarEstudante(est);
-                const delBtn = document.createElement('button');
-                delBtn.innerText = '🗑️';
-                delBtn.className = 'btn-danger';
+                const delBtn = document.createElement('button'); delBtn.innerText = '🗑️'; delBtn.className = 'btn-danger';
                 delBtn.onclick = () => deletarEstudante(est.id);
-                actions.appendChild(editBtn);
-                actions.appendChild(delBtn);
+                actions.appendChild(editBtn); actions.appendChild(delBtn);
             });
         }
 
@@ -278,6 +256,7 @@
         }
 
         function editarEstudante(est) {
+            document.getElementById('matricula').value = est.matricula;
             document.getElementById('nome').value = est.nome;
             document.getElementById('escola').value = est.escola;
             document.getElementById('serie').value = est.serie;
@@ -290,10 +269,11 @@
             addBtn.onclick = async () => {
                 const updated = {
                     id: est.id,
+                    matricula: document.getElementById('matricula').value,
                     nome: document.getElementById('nome').value,
                     escola: document.getElementById('escola').value,
-                    turma: document.getElementById('turma').value,
                     serie: document.getElementById('serie').value,
+                    turma: document.getElementById('turma').value,
                     status: document.getElementById('status').value,
                     missao: parseInt(document.getElementById('missao').value),
                     etapa: parseInt(document.getElementById('etapa').value)
@@ -301,26 +281,12 @@
                 await adicionarOuAtualizarEstudante(updated, true);
                 addBtn.innerText = '➕ Salvar';
                 addBtn.onclick = addNewStudent;
-                document.getElementById('nome').value = '';
-                document.getElementById('escola').selectedIndex = 0;
-                document.getElementById('serie').selectedIndex = 0;
-                document.getElementById('turma').selectedIndex = 0;
-                document.getElementById('status').selectedIndex = 1;
-                document.getElementById('missao').value = 1;
-                document.getElementById('etapa').value = 1;
+                limparFormulario();
             };
         }
 
-        async function addNewStudent() {
-            const nome = document.getElementById('nome').value;
-            const escola = document.getElementById('escola').value;
-            const serie = document.getElementById('serie').value;
-            const turma = document.getElementById('turma').value;
-            const status = document.getElementById('status').value;
-            const missao = parseInt(document.getElementById('missao').value);
-            const etapa = parseInt(document.getElementById('etapa').value);
-            if (!nome || !escola || !serie || !turma) { alert('Preencha todos os campos'); return; }
-            await adicionarOuAtualizarEstudante({ nome, escola, turma, serie, status, missao, etapa }, false);
+        function limparFormulario() {
+            document.getElementById('matricula').value = '';
             document.getElementById('nome').value = '';
             document.getElementById('escola').selectedIndex = 0;
             document.getElementById('serie').selectedIndex = 0;
@@ -330,19 +296,33 @@
             document.getElementById('etapa').value = 1;
         }
 
-        // CSV Import (mantém compatibilidade)
+        async function addNewStudent() {
+            const matricula = document.getElementById('matricula').value.trim();
+            const nome = document.getElementById('nome').value.trim();
+            const escola = document.getElementById('escola').value;
+            const serie = document.getElementById('serie').value;
+            const turma = document.getElementById('turma').value;
+            const status = document.getElementById('status').value;
+            const missao = parseInt(document.getElementById('missao').value);
+            const etapa = parseInt(document.getElementById('etapa').value);
+            if (!matricula || !nome || !escola || !serie || !turma) { alert('Preencha todos os campos'); return; }
+            await adicionarOuAtualizarEstudante({ matricula, nome, escola, turma, serie, status, missao, etapa }, false);
+            limparFormulario();
+        }
+
         function importCSV(file) {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
                     for (let row of results.data) {
-                        if (!row.nome) continue;
+                        if (!row.matricula) continue;
                         const missao = parseInt(row.missao) || 1;
                         const etapa = parseInt(row.etapa) || 1;
                         const pontos = calcularPontos(missao, etapa, row.status);
                         const codigo = gerarCodigo(missao, etapa, row.status);
                         await supabase.from('estudantes').insert([{
+                            matricula: row.matricula,
                             nome: row.nome,
                             escola: row.escola,
                             turma: row.turma,
@@ -376,9 +356,9 @@
             return true;
         }
 
-        // Student login
+        // Student login usando matrícula
         async function studentLogin(matricula) {
-            const { data, error } = await supabase.from('estudantes').select('*').eq('id', parseInt(matricula));
+            const { data, error } = await supabase.from('estudantes').select('*').eq('matricula', matricula);
             if (error || !data || data.length === 0) { alert('Matrícula não encontrada'); return false; }
             const estudante = data[0];
             currentUser = { role: 'student', id: estudante.id, nome: estudante.nome };
@@ -402,7 +382,7 @@
                     <div class="card"><h3>📌 Missão Atual</h3><p>Missão ${est.missao} / 16</p><div class="progress-bar"><div class="progress-fill" style="width: ${progressoMissao}%;"></div></div><p>Etapa ${est.etapa} / 4</p><div class="progress-bar"><div class="progress-fill" style="width: ${progressoEtapa}%;"></div></div></div>
                     <div class="card"><h3>🎖️ Código de Conquista</h3><p class="badge" style="font-size:1.2rem;">${codigo}</p><p>Status: <strong>${est.status}</strong></p></div>
                 </div>
-                <div class="card"><h3>📊 Detalhes</h3><p><strong>Escola:</strong> ${est.escola} | <strong>Turma:</strong> ${est.turma} | <strong>Série:</strong> ${est.serie}</p><p><strong>Nome:</strong> ${est.nome}</p></div>
+                <div class="card"><h3>📊 Detalhes</h3><p><strong>Escola:</strong> ${est.escola} | <strong>Série:</strong> ${est.serie} | <strong>Turma:</strong> ${est.turma}</p><p><strong>Nome:</strong> ${est.nome}</p><p><strong>Matrícula:</strong> ${est.matricula}</p></div>
             `;
         }
 
@@ -457,7 +437,6 @@
             carregarEstudantes({ escola, turma });
         };
 
-        // Inicialização
         populateSelects();
         loginPanel.style.display = 'block';
         professorPanel.style.display = 'none';
